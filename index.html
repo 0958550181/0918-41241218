@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>剪刀石頭布 - 魔王挑戰</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #84fab0, #8fd3f4);
+            color: #333;
+            transition: background-color 0.5s;
+        }
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        button {
+            padding: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background-color: #4CAF50;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.5s, transform 0.2s;
+            width: 100px;
+        }
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+        #result, #giftPackMessage, #levelInfo {
+            margin-top: 20px;
+            font-size: 24px;
+            padding: 10px;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 80%;
+            text-align: center;
+        }
+        .win {
+            animation: winAnimation 1s infinite;
+        }
+        @keyframes winAnimation {
+            0% { background-color: rgba(255, 255, 0, 0.5); }
+            50% { background-color: rgba(255, 215, 0, 0.5); }
+            100% { background-color: rgba(255, 255, 0, 0.5); }
+        }
+        #leaderboard, #giftPack {
+            margin-top: 30px;
+            padding: 10px;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 80%;
+            text-align: center;
+        }
+        .leaderboard-item {
+            margin: 10px 0;
+            font-size: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        #playerNameInput {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+            font-size: 18px;
+            width: 80%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+    <audio id="level1Music" src="win.mp3" preload="auto"></audio>
+    <audio id="level2Music" src="loss.mp3" preload="auto"></audio>
+    <audio id="level3Music" src="平手.mp3" preload="auto"></audio>
+    <audio id="victorySound" src="win.mp3" preload="auto"></audio>
+</head>
+<body>
+    <h1>剪刀石頭布 - 魔王挑戰</h1>
+    <input type="text" id="playerNameInput" placeholder="輸入你的名字" />
+    <div id="levelInfo">關卡: 1 (魔王: 小怪獸)</div>
+    <div id="playerLevel">玩家等級: 1 (經驗值: 0/10)</div>
+    <div class="button-container">
+        <button onclick="play('剪刀')">✂️</button>
+        <button onclick="play('石頭')">🪨</button>
+        <button onclick="play('布')">📜</button>
+        <button onclick="resetGame()">重置</button>
+        <button onclick="receiveGiftPack()">🎁 獲取禮物包</button>
+    </div>
+    
+    <div id="result"></div>
+    <div id="giftPackMessage"></div>
+    <div id="musicControl">
+        <button onclick="toggleMusic()">音樂: <span id="musicStatus">播放</span></button>
+    </div>
+    <div id="leaderboard">
+        <h2>排行榜</h2>
+        <div class="leaderboard-item">
+            <span id="playerName">玩家:</span>
+            <span id="playerWins">0</span>
+        </div>
+        <div class="leaderboard-item">
+            <span>平局次數:</span>
+            <span id="playerDraws">0</span>
+        </div>
+        <div class="leaderboard-item">
+            <span>失敗次數:</span>
+            <span id="playerLosses">0</span>
+        </div>
+        <div class="leaderboard-item">
+            <span>電腦勝利次數:</span>
+            <span id="computerWins">0</span>
+        </div>
+        <div class="leaderboard-item">
+            <span>電腦平局次數:</span>
+            <span id="computerDraws">0</span>
+        </div>
+        <div class="leaderboard-item">
+            <span>電腦失敗次數:</span>
+            <span id="computerLosses">0</span>
+        </div>
+    </div>
+
+    <script>
+        let playerName = "";
+        let playerWins = 0;
+        let playerDraws = 0;
+        let playerLosses = 0;
+        let computerWins = 0;
+        let computerDraws = 0;
+        let computerLosses = 0;
+        let level = 1;
+        let experience = 0;
+        const experienceToLevelUp = 10;
+        const bosses = [
+            { name: "小怪獸", winsRequired: 3 },
+            { name: "火焰魔王", winsRequired: 5 },
+            { name: "黑暗魔王", winsRequired: 7 },
+        ];
+        let isMusicPlaying = true;
+        const levelMusic = [
+            document.getElementById('level1Music'),
+            document.getElementById('level2Music'),
+            document.getElementById('level3Music')
+        ];
+
+        document.getElementById('playerNameInput').addEventListener('input', function() {
+            playerName = this.value || "玩家";
+            document.getElementById('playerName').innerText = playerName + ":";
+        });
+
+        function play(playerChoice) {
+            const choices = ['剪刀', '石頭', '布'];
+            const computerChoice = choices[Math.floor(Math.random() * choices.length)];
+            let resultMessage;
+            let resultDiv = document.getElementById('result');
+
+            if (playerChoice === computerChoice) {
+                resultMessage = "平手！你和電腦都選擇了 " + playerChoice + "。";
+                playerDraws++;
+                computerDraws++;
+                resultDiv.classList.remove('win');
+            } else if (
+                (playerChoice === '剪刀' && computerChoice === '布') ||
+                (playerChoice === '石頭' && computerChoice === '剪刀') ||
+                (playerChoice === '布' && computerChoice === '石頭')
+            ) {
+                resultMessage = "你贏了！你選擇了 " + playerChoice + "，電腦選擇了 " + computerChoice + "。";
+                playerWins++;
+                computerLosses++;
+                resultDiv.classList.add('win');
+                document.getElementById('victorySound').play();
+
+                experience += 2;
+                checkLevelUp();
+
+                if (playerWins >= bosses[level - 1].winsRequired) {
+                    levelUp();
+                }
+            } else {
+                resultMessage = "你輸了！你選擇了 " + playerChoice + "，電腦選擇了 " + computerChoice + "。";
+                playerLosses++;
+                computerWins++;
+                resultDiv.classList.remove('win');
+            }
+
+            resultDiv.innerText = resultMessage;
+            updateLeaderboard();
+        }
+
+        function checkLevelUp() {
+            if (experience >= experienceToLevelUp) {
+                experience -= experienceToLevelUp;
+                document.getElementById('playerLevel').innerText = `玩家等級: ${++level} (經驗值: ${experience}/${experienceToLevelUp})`;
+            }
+        }
+
+        function levelUp() {
+            if (level < bosses.length) {
+                level++;
+                document.getElementById('levelInfo').innerText = `關卡: ${level} (魔王: ${bosses[level - 1].name})`;
+                playerWins = 0;
+                document.body.style.backgroundColor = ['#84fab0', '#f85032', '#3c3c3c'][level - 1];
+                levelMusic[level - 1].play();
+            } else {
+                Swal.fire({
+                    title: '恭喜過關！',
+                    text: '你已經打敗所有魔王！',
+                    icon: 'success',
+                    confirmButtonText: '重新挑戰'
+                }).then(() => resetGame());
+            }
+        }
+
+        function resetGame() {
+            level = 1;
+            experience = 0;
+            playerWins = 0;
+            playerDraws = 0;
+            playerLosses = 0;
+            computerWins = 0;
+            computerDraws = 0;
+            computerLosses = 0;
+            document.getElementById('levelInfo').innerText = `關卡: 1 (魔王: 小怪獸)`;
+            document.getElementById('playerLevel').innerText = `玩家等級: 1 (經驗值: 0/10)`;
+            updateLeaderboard();
+            document.body.style.backgroundColor = '#84fab0';
+        }
+
+        function updateLeaderboard() {
+            document.getElementById('playerWins').innerText = playerWins;
+            document.getElementById('playerDraws').innerText = playerDraws;
+            document.getElementById('playerLosses').innerText = playerLosses;
+            document.getElementById('computerWins').innerText = computerWins;
+            document.getElementById('computerDraws').innerText = computerDraws;
+            document.getElementById('computerLosses').innerText = computerLosses;
+        }
+
+        function receiveGiftPack() {
+            Swal.fire({
+                title: '獲取禮物包！',
+                text: '你獲得了500金幣和一件神器！',
+                icon: 'success',
+                confirmButtonText: '太棒了！'
+            });
+            document.getElementById('giftPackMessage').innerText = "你獲得了500金幣和一件神器！";
+        }
+
+        function toggleMusic() {
+            isMusicPlaying = !isMusicPlaying;
+            const currentMusic = levelMusic[level - 1];
+            if (isMusicPlaying) {
+                currentMusic.play();
+                document.getElementById('musicStatus').innerText = "播放";
+            } else {
+                currentMusic.pause();
+                document.getElementById('musicStatus').innerText = "暫停";
+            }
+        }
+    </script>
+</body>
+</html>
